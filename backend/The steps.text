@@ -1,0 +1,6 @@
+
+
+1-Initialize the project from spring Initialize.
+2-set application.properities  .
+3-run the project "mvn spring-boot:run" .
+4-make (entity+repo+service+controller)test.
