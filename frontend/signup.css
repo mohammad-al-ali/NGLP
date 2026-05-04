@@ -1,0 +1,41 @@
+
+nav{
+  display: flex;
+  justify-content: space-between;
+  background-color: #004e00;
+  color: #ffff;
+  padding: 20px;
+}
+
+ul{
+display: flex;
+list-style: none;
+gap: 20px;
+
+}
+
+nav ul li a{
+  text-decoration: none;
+color: #ffff;
+font-weight: bold;
+}
+
+footer{
+display: flex;
+justify-content: space-around;
+background-color:#004e00; 
+color:#ffff;
+}
+
+.Copyright{
+  border-top: 2px solid #ffff;
+  padding : 25PX;
+  text-align: center;
+  color: #ffff;
+  background-color: #004e00;
+}
+
+.empty{
+  width: 300px;
+  height: 300px;
+}
