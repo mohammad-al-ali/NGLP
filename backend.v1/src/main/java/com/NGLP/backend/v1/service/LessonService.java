@@ -1,37 +1,43 @@
 package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.Lesson;
-import com.NGLP.backend.v1.exception.ResourceNotFoundException;
 import com.NGLP.backend.v1.repo.LessonRepo;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class LessonService {
     private final LessonRepo lessonRepo;
     private final LessonTranscriptionService transcriptionService;
-    public LessonService(LessonRepo lessonRepo ,LessonTranscriptionService transcriptionService) {
-        this.lessonRepo = lessonRepo;
-        this.transcriptionService =transcriptionService;
-    }
+    private final FileStorageService fileStorageService;
 
-    public List<Lesson> findAll() { return lessonRepo.findAll(); }
+    // 1. تم استبدال findAll لنجلب الدروس بناءً على الكورس
+    public List<Lesson> findLessonsByCourse(Long courseId) {
+        return lessonRepo.findByCourseId(courseId);
+    }
 
     public Lesson findById(Long id) {
         return lessonRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", id));
+                .orElseThrow(() -> new EntityNotFoundException("Lessonnot found with this"+ id));
     }
 
-    @Transactional // مهم جداً لضمان استقرار قاعدة البيانات
+    @Transactional
     public Lesson create(Lesson lesson, MultipartFile file) {
-        // 1. حفظ بيانات الدرس أولاً في قاعدة البيانات للحصول على الـ ID
+        // 1. حفظ الفيديو محلياً والحصول على الرابط
+        String videoUrl = fileStorageService.saveVideo(file);
+
+        // 2. إسناد الرابط للدرس
+        lesson.setVideoUrl(videoUrl);
+
+        // 3. حفظ بيانات الدرس في قاعدة البيانات
         Lesson savedLesson = lessonRepo.save(lesson);
 
-        // 2. استدعاء خدمة استخراج النص باستخدام الـ ID الجديد والملف
-        // ملاحظة: بما أن العملية تأخذ وقتاً، يفضل لاحقاً جعلها @Async (سنتحدث عن هذا لاحقاً)
+        // 4. استدعاء خدمة استخراج النص للذكاء الاصطناعي
         transcriptionService.extractAndSaveTranscript(savedLesson.getId(), file);
 
         return savedLesson;
@@ -44,8 +50,15 @@ public class LessonService {
             existing.setDurationSeconds(lesson.getDurationSeconds());
             existing.setCourse(lesson.getCourse());
             return lessonRepo.save(existing);
-        }).orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", id));
+        }).orElseThrow(() -> new EntityNotFoundException("Lesson not found with this id"+ id));
     }
 
-    public void delete(Long id) { lessonRepo.deleteById(id); }
+    @Transactional
+    public void delete(Long id) {
+        lessonRepo.deleteById(id);
+    }
+
+    public boolean existsByCourseId(Long id) {
+        return lessonRepo.existsByCourseId(id);
+    }
 }

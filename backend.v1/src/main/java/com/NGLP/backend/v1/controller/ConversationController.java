@@ -4,30 +4,35 @@ import com.NGLP.backend.v1.entity.Conversation;
 import com.NGLP.backend.v1.service.ConversationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/conversations")
+@RequestMapping("/api/v1/conversations")
+@RequiredArgsConstructor
 public class ConversationController {
+
     private final ConversationService conversationService;
 
-    public ConversationController(ConversationService conversationService) { this.conversationService = conversationService; }
-
+    /**
+     * نقطة الوصول الوحيدة التي نحتاجها فعلياً لتهيئة الدردشة
+     * GET /api/v1/conversations/init?userId=1&lessonId=5
+     */
     @GetMapping
-    public List<Conversation> getAll() { return conversationService.findAll(); }
+    public ResponseEntity<Conversation> initConversation(
+            @RequestParam Long userId,
+            @RequestParam Long lessonId) {
 
-    @GetMapping("/{id}")
-    public Conversation getById(@PathVariable Long id) { return conversationService.findById(id); }
+        Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
+        return ResponseEntity.ok(conversation);
+    }
 
-    @PostMapping
-    public Conversation create(@RequestBody Conversation c) { return conversationService.create(c); }
-
-    @PutMapping("/{id}")
-    public Conversation update(@PathVariable Long id, @RequestBody Conversation c) { return conversationService.update(id, c); }
-
+    /**
+     * DELETE /api/v1/conversations/10
+     * لمسح محادثة معينة (اختياري، ميزة جيدة للطالب)
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteConversation(@PathVariable Long id) {
         conversationService.delete(id);
         return ResponseEntity.noContent().build();
     }

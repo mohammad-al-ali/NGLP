@@ -1,7 +1,8 @@
 package com.NGLP.backend.v1.ai;
 
 import com.NGLP.backend.v1.service.ConversationService;
-import com.NGLP.backend.v1.dto.AiAnswer;
+import com.NGLP.backend.v1.entity.Conversation;
+import com.NGLP.backend.v1.service.MsgService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -16,23 +17,18 @@ import org.springframework.stereotype.Service;
 /**
  * الوكيل الذكي (AI Agent) الخاص بمنصة NGLP.
  */
+
 @Service
 public class NglpAiAgent {
 
-    // المتغيرات النهائية (التبعيات)
     private final ConversationService conversationService;
+    private final MsgService msgService; // 🌟 حقن خدمة الرسائل
     private final ChatClient chatClient;
 
-    /**
-     * باني الكلاس (Constructor) - يقوم بحقن التبعيات وتهيئة الذكاء الاصطناعي.
-     * لا نحتاج @RequiredArgsConstructor لأننا نكتب الباني بأنفسنا.
-     */
-    public NglpAiAgent(ConversationService conversationService, ChatClient.Builder builder, ChatMemory chatMemory) {
-
-        // 1. حقن خدمة المحادثات (هذا السطر يحل الخطأ الذي ظهر لك!)
+    public NglpAiAgent(ConversationService conversationService, MsgService msgService, ChatClient.Builder builder, ChatMemory chatMemory) {
         this.conversationService = conversationService;
+        this.msgService = msgService;
 
-        // 2. تعليمات النظام
         String systemPrompt = """
             You are a smart and friendly AI Tutor on the NGLP educational platform.
             Your main mission is to help students by answering their questions clearly
@@ -48,10 +44,8 @@ public class NglpAiAgent {
                Arabic language.
             """;
 
-        // 3. بناء محرك الذكاء الاصطناعي
         this.chatClient = builder
                 .defaultSystem(systemPrompt)
-                // تنبيه مهم: استخدم defaultFunctions وليس defaultToolNames لتجنب خطأ @Tool
                 .defaultToolNames("fetchLessonTranscript")
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build()
@@ -61,19 +55,24 @@ public class NglpAiAgent {
 
     /**
      * الدالة الرئيسية لاستقبال أسئلة الطلاب.
+     * لاحظ أننا ألغينا الـ AiAnswer واستخدمنا String للإرجاع للتبسيط.
      */
-    public AiAnswer ask(Long userId, Long lessonId, String timestamp, String message, String conversationId) {
+    public String ask(Long userId, Long lessonId, Integer timestamp, String message) {
 
-        // 1. جلب رقم المحادثة الحقيقي أو إنشاء محادثة جديدة عبر الخدمة (Service)
-        String activeConversationId = conversationService.getOrCreateConversationId(userId, lessonId, conversationId);
+        // 1. جلب أو إنشاء محادثة الطالب لهذا الدرس (الدالة الجديدة)
+        Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
+        String activeConversationId = String.valueOf(conversation.getId());
 
-        // 2. دمج سؤال الطالب مع بيانات النظام
+        // 2. 🌟 حفظ سؤال الطالب في قاعدة البيانات مباشرة!
+        msgService.saveMessage(conversation, message, "USER", timestamp);
+
+        // 3. دمج سؤال الطالب مع بيانات النظام
         String enrichedPrompt = String.format(
-                "Student Question: %s\n[System Info: lessonId=%d, timestamp=%s]",
+                "Student Question: %s\n[System Info: lessonId=%d, timestamp=%d]",
                 message, lessonId, timestamp
         );
 
-        // 3. إرسال الطلب للذكاء الاصطناعي مع إرفاق رقم المحادثة الحقيقي للذاكرة
+        // 4. إرسال الطلب للذكاء الاصطناعي
         String aiResponse = this.chatClient.prompt()
                 .user(enrichedPrompt)
                 .advisors(advisorSpec -> advisorSpec
@@ -82,7 +81,10 @@ public class NglpAiAgent {
                 .call()
                 .content();
 
-        // 4. إرجاع الإجابة مع رقم المحادثة للمتحكم (Controller)
-        return new AiAnswer(aiResponse, activeConversationId);
+        // 5. 🌟 حفظ إجابة الذكاء الاصطناعي في قاعدة البيانات!
+        msgService.saveMessage(conversation, aiResponse, "AI", timestamp);
+
+        // 6. إرجاع النص للواجهة الأمامية
+        return aiResponse;
     }
 }
