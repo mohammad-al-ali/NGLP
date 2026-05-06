@@ -28,7 +28,6 @@ import java.nio.file.Path;
 @RequiredArgsConstructor
 public class LessonTranscriptionService {
 
-    private final LessonService lessonService; // تأكد أنك تستخدم LessonService
     private final LessonTranscriptRepo transcriptRepo;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -38,7 +37,6 @@ public class LessonTranscriptionService {
         Path tempFile = null; // تعريف مسار الملف المؤقت
         try {
             log.info("🎬 بدء معالجة الفيديو للدرس رقم: {}", lessonId);
-            Lesson lesson = lessonService.findById(lessonId);
 
             // 1. إنشاء ملف مؤقت في نظام التشغيل ونقل بيانات الفيديو إليه
             tempFile = Files.createTempFile("upload_lesson_" + lessonId + "_", ".mp4");
@@ -73,7 +71,6 @@ public class LessonTranscriptionService {
 
             for (JsonNode node : transcriptions) {
                 LessonTranscript transcript = new LessonTranscript();
-                transcript.setLesson(lesson);
                 transcript.setStartSecond(node.path("start").asInt());
                 transcript.setEndSecond(node.path("end").asInt());
                 transcript.setTranscriptContent(node.path("text").asText());
