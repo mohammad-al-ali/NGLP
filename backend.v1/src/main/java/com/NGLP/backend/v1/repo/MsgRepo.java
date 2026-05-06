@@ -17,4 +17,7 @@ public interface MsgRepo extends JpaRepository<Msg, Long> {
 
     @Query("SELECT m FROM Msg m WHERE m.conversation.id = :convId ORDER BY m.sentAt DESC")
     List<Msg> findLastMessages(@Param("convId") Long convId, Pageable pageable);
+
+    // جلب رسائل محادثة معينة مرتبة من الأقدم للأحدث
+    List<Msg> findByConversationIdOrderBySentAtAsc(Long conversationId);
 }

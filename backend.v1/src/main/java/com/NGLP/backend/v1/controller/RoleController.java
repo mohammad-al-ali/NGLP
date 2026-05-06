@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/roles")
+@RequestMapping("/api/v1/roles")
 public class RoleController {
     private final RoleService roleService;
 
@@ -19,16 +19,4 @@ public class RoleController {
 
     @GetMapping("/{id}")
     public Role getById(@PathVariable Long id) { return roleService.findById(id); }
-
-    @PostMapping
-    public Role create(@RequestBody Role role) { return roleService.create(role); }
-
-    @PutMapping("/{id}")
-    public Role update(@PathVariable Long id, @RequestBody Role role) { return roleService.update(id, role); }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        roleService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
 }

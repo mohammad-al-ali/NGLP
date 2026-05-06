@@ -49,4 +49,4 @@ async def transcribe_video(file: UploadFile = File(...)):
 }
 
 
-#to run this Service python -m uvicorn server:app --port 8000
+#to run this Service "python -m uvicorn server:app --port 8000"

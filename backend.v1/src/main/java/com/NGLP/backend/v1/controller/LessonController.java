@@ -11,29 +11,33 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 @Slf4j
 @RestController
-@RequestMapping("/api/lessons")
+@RequestMapping("/api/v1/lessons")
 public class LessonController {
     private final LessonService lessonService;
 
     public LessonController(LessonService lessonService) { this.lessonService = lessonService; }
 
     @GetMapping
-    public List<Lesson> getAll() { return lessonService.findAll(); }
+    public List<Lesson> getAll(@RequestParam(required = false) Long courseId) { return lessonService.findLessonsByCourse(courseId); }
 
     @GetMapping("/{id}")
     public Lesson getById(@PathVariable Long id) { return lessonService.findById(id); }
 
-    @PostMapping(value = "/create-with-video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Lesson> createLessonWithVideo(
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createLessonWithVideo(
+            // 🌟 عدنا للكود النظيف: نستلم كائن Lesson مباشرة
             @RequestPart("lesson") Lesson lesson,
             @RequestPart("file") MultipartFile file) {
 
         log.info("📩 طلب إنشاء درس جديد مع الفيديو: {}", lesson.getTitle());
 
-        // سنطلب من lessonService تولي المهمة بالكامل
-        Lesson savedLesson = lessonService.create(lesson, file);
-
-        return ResponseEntity.ok(savedLesson);
+        try {
+            Lesson savedLesson = lessonService.create(lesson, file);
+            return ResponseEntity.ok(savedLesson);
+        } catch (Exception e) {
+            log.error("❌ حدث خطأ أثناء الرفع: ", e);
+            return ResponseEntity.badRequest().body("حدث خطأ: " + e.getMessage());
+        }
     }
     @PutMapping("/{id}")
     public Lesson update(@PathVariable Long id, @RequestBody Lesson lesson) { return lessonService.update(id, lesson); }

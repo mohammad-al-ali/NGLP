@@ -1,8 +1,8 @@
 package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.LessonTranscript;
-import com.NGLP.backend.v1.exception.ResourceNotFoundException;
 import com.NGLP.backend.v1.repo.LessonTranscriptRepo;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
@@ -18,7 +18,7 @@ public class LessonTranscriptService {
 
     public LessonTranscript findById(Long id) {
         return transcriptRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("LessonTranscript", "id", id));
+                .orElseThrow(() -> new EntityNotFoundException("LessonTranscript not found with this"+ id));
     }
 
     public LessonTranscript create(LessonTranscript transcript) { return transcriptRepo.save(transcript); }
@@ -30,7 +30,7 @@ public class LessonTranscriptService {
             existing.setEndSecond(transcript.getEndSecond());
             existing.setTranscriptContent(transcript.getTranscriptContent());
             return transcriptRepo.save(existing);
-        }).orElseThrow(() -> new ResourceNotFoundException("LessonTranscript", "id", id));
+        }).orElseThrow(() -> new EntityNotFoundException("LessonTranscript Not Found with"+ id));
     }
 
     public void delete(Long id) { transcriptRepo.deleteById(id); }

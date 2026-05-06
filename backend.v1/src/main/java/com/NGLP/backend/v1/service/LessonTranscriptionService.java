@@ -2,6 +2,7 @@ package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.entity.LessonTranscript;
+import com.NGLP.backend.v1.repo.LessonRepo;
 import com.NGLP.backend.v1.repo.LessonTranscriptRepo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -29,36 +31,42 @@ import java.nio.file.Path;
 public class LessonTranscriptionService {
 
     private final LessonTranscriptRepo transcriptRepo;
+    private final LessonRepo lessonRepo;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final String AI_SERVICE_URL = "http://127.0.0.1:8000/transcribe";
 
+    @Transactional
+    @Async
     public void extractAndSaveTranscript(Long lessonId, MultipartFile videoFile) {
-        Path tempFile = null; // تعريف مسار الملف المؤقت
+        Path tempFile = null;
         try {
             log.info("🎬 بدء معالجة الفيديو للدرس رقم: {}", lessonId);
 
-            // 1. إنشاء ملف مؤقت في نظام التشغيل ونقل بيانات الفيديو إليه
+            // 1. جلب كيان الدرس لربط النصوص به
+            Lesson lesson = lessonRepo.findById(lessonId)
+                    .orElseThrow(() -> new RuntimeException("الدرس غير موجود"));
+
+            // 2. إنشاء ملف مؤقت
             tempFile = Files.createTempFile("upload_lesson_" + lessonId + "_", ".mp4");
             videoFile.transferTo(tempFile.toFile());
-            log.info("تم حفظ الملف مؤقتاً في: {}", tempFile.toAbsolutePath());
 
-            // 2. تجهيز الطلب لإرسال الملف (Multipart Form Data)
+            // 3. تجهيز الطلب لإرسال الملف (هنا كان الجزء المفقود)
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            // نستخدم الملف المؤقت الذي أنشأناه للتو
             body.add("file", new FileSystemResource(tempFile.toFile()));
 
+            // تعريف الـ requestEntity الذي كان مفقوداً!
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            // 3. إرسال الفيديو لسيرفر البايثون
+            // 4. إرسال الفيديو لسيرفر البايثون
             log.info("🚀 جاري إرسال الفيديو للذكاء الاصطناعي...");
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<String> response = restTemplate.postForEntity(AI_SERVICE_URL, requestEntity, String.class);
 
-            // 4. قراءة الرد (JSON) وتحويله
+            // 5. قراءة الرد (JSON) وتحويله
             log.info("✅ تم استلام الرد من الذكاء الاصطناعي، جاري التحليل...");
             JsonNode rootNode = objectMapper.readTree(response.getBody());
 
@@ -75,26 +83,32 @@ public class LessonTranscriptionService {
                 transcript.setEndSecond(node.path("end").asInt());
                 transcript.setTranscriptContent(node.path("text").asText());
 
+                // ربط النص بالدرس
+                transcript.setLesson(lesson);
+
                 transcriptList.add(transcript);
             }
 
-            // 5. حفظ النصوص في قاعدة البيانات
+            // 6. حفظ النصوص في قاعدة البيانات
             transcriptRepo.saveAll(transcriptList);
-            log.info("🎉 تمت العملية بنجاح! تم حفظ {} مقطع نصي.", transcriptList.size());
+            log.info("🎉 تمت العملية بنجاح! تم حفظ {} مقطع نصي للدرس رقم: {}", transcriptList.size(), lessonId);
 
         } catch (Exception e) {
             log.error("❌ حدث خطأ أثناء محاولة استخراج النص: ", e);
             throw new RuntimeException("فشل في استخراج النص من الفيديو", e);
         } finally {
-            // 6. التنظيف: حذف الملف المؤقت في جميع الأحوال (نجاح أو فشل) لتجنب امتلاء السيرفر
+            // 7. التنظيف
             if (tempFile != null) {
                 try {
                     Files.deleteIfExists(tempFile);
-                    log.info("🧹 تم حذف الملف المؤقت بنجاح.");
                 } catch (Exception e) {
                     log.warn("⚠️ لم يتمكن النظام من حذف الملف المؤقت: {}", tempFile.toAbsolutePath());
                 }
             }
         }
+    }
+    // دالة جديدة لاسترجاع النصوص للواجهة الأمامية
+    public List<LessonTranscript> getTranscriptsByLesson(Long lessonId) {
+        return transcriptRepo.findByLessonIdOrderByStartSecondAsc(lessonId);
     }
 }

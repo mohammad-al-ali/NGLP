@@ -8,15 +8,24 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/courses")
+@RequestMapping("/api/v1/courses")
 public class CourseController {
     private final CourseService courseService;
 
     public CourseController(CourseService courseService) { this.courseService = courseService; }
 
     @GetMapping
-    public List<Course> getAll() { return courseService.findAll(); }
+    public ResponseEntity<List<Course>> getAllCourses(
+            @RequestParam(required = false) Long categoryId) {
 
+        // إذا أرسلت الواجهة رقم القسم، نجلب كورسات هذا القسم فقط
+        if (categoryId != null) {
+            return ResponseEntity.ok(courseService.findCoursesByCategory(categoryId));
+        }
+
+        // إذا لم ترسل، نجلب كل الكورسات (مفيدة للأدمن)
+        return ResponseEntity.ok(courseService.findAll());
+    }
     @GetMapping("/{id}")
     public Course getById(@PathVariable Long id) { return courseService.findById(id); }
 

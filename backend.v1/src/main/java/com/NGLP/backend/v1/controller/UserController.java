@@ -4,31 +4,41 @@ import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
 
-    public UserController(UserService userService) { this.userService = userService; }
+    // ❌ تم حذف getAll() نهائياً لحماية بيانات الطلاب!
+    // ❌ تم حذف delete() لمنع مسح الحسابات وتدمير العلاقات في قاعدة البيانات.
 
-    @GetMapping
-    public List<User> getAll() { return userService.findAll(); }
-
+    /**
+     * 1. جلب بيانات المستخدم (تُستخدم لعرض صفحة الملف الشخصي Profile)
+     */
     @GetMapping("/{id}")
-    public User getById(@PathVariable Long id) { return userService.findById(id); }
+    public ResponseEntity<User> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
 
-    @PostMapping
-    public User create(@RequestBody User user) { return userService.create(user); }
+    /**
+     * 2. إنشاء حساب جديد (Registration)
+     * غيرنا المسار إلى /register ليكون أكثر وضوحاً واحترافية
+     */
+    @PostMapping("/register")
+    public ResponseEntity<User> register(@RequestBody User user) {
+        return ResponseEntity.ok(userService.create(user));
+    }
 
+    /**
+     * 3. تحديث الملف الشخصي (آمنة: تحدث الاسم والإيميل فقط)
+     */
     @PutMapping("/{id}")
-    public User update(@PathVariable Long id, @RequestBody User user) { return userService.update(id, user); }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.delete(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<User> updateProfile(@PathVariable Long id, @RequestBody User user) {
+        return ResponseEntity.ok(userService.updateProfile(id, user));
     }
 }
