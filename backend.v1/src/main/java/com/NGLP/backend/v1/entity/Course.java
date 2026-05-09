@@ -19,6 +19,10 @@ public class Course {
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id")
+    private User teacher;
 }
 
 

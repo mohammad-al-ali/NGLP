@@ -46,6 +46,7 @@ public class LessonService {
     public Lesson update(Long id, Lesson lesson) {
         return lessonRepo.findById(id).map(existing -> {
             existing.setTitle(lesson.getTitle());
+            existing.setDescription(lesson.getDescription());
             existing.setVideoUrl(lesson.getVideoUrl());
             existing.setDurationSeconds(lesson.getDurationSeconds());
             existing.setCourse(lesson.getCourse());

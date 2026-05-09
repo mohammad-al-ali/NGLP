@@ -23,6 +23,10 @@ public class CourseService {
         return courseRepo.findByCategoryId(categoryId);
     }
 
+    public List<Course> findCoursesByTeacher(Long teacherId) {
+        return courseRepo.findByTeacherId(teacherId);
+    }
+
     public Course findById(Long id) {
         return courseRepo.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Course not found with this id"+ id));
@@ -37,6 +41,7 @@ public class CourseService {
             existing.setTitle(course.getTitle());
             existing.setDescription(course.getDescription());
             existing.setCategory(course.getCategory());
+            existing.setTeacher(course.getTeacher());
             return courseRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("Course not found id"+ id));
     }

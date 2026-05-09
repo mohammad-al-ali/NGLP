@@ -23,6 +23,10 @@ public class LessonTranscriptService {
 
     public LessonTranscript create(LessonTranscript transcript) { return transcriptRepo.save(transcript); }
 
+    public List<LessonTranscript> findByLesson(Long lessonId) {
+        return transcriptRepo.findByLessonIdOrderByStartSecondAsc(lessonId);
+    }
+
     public LessonTranscript update(Long id, LessonTranscript transcript) {
         return transcriptRepo.findById(id).map(existing -> {
             existing.setLesson(transcript.getLesson());

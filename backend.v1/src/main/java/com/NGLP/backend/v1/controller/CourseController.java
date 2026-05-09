@@ -16,7 +16,12 @@ public class CourseController {
 
     @GetMapping
     public ResponseEntity<List<Course>> getAllCourses(
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long teacherId) {
+
+        if (teacherId != null) {
+            return ResponseEntity.ok(courseService.findCoursesByTeacher(teacherId));
+        }
 
         // إذا أرسلت الواجهة رقم القسم، نجلب كورسات هذا القسم فقط
         if (categoryId != null) {
