@@ -3,53 +3,48 @@ package com.NGLP.backend.v1.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-public class SecurityConfig implements WebMvcConfigurer {
+public class SecurityConfig {
 
-    // -------------------------------
-    // 1) CORS CONFIG
-    // -------------------------------
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:5173")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
-
-    // -------------------------------
-    // 2) STATIC RESOURCE HANDLER
-    // -------------------------------
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:uploads/");
-    }
-
-    // -------------------------------
-    // 3) SPRING SECURITY FILTER CHAIN
-    // -------------------------------
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
-        http.csrf(csrf -> csrf.disable())
-                .cors(cors -> {}) // مهم جداً لتفعيل CORS من WebMvcConfigurer
+        http
+                .csrf(csrf -> csrf.disable())
+                // 1. تفعيل CORS من الـ Bean الموجود بالأسفل
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // 2. جعل النظام بدون جلسات (Stateless)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // 3. ترتيب الصلاحيات في بلوك واحد
                 .authorizeHttpRequests(auth -> auth
-                        // 🌟 السماح بمرور ملفات Swagger دون تسجيل دخول
+                        // 1. السماح بطلبات الاستكشاف (CORS Preflight) من المتصفح
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. السماح لمسارات المصادقة (Auth)
+                        .requestMatchers("/api/v1/auth/", "/auth/").permitAll()
+
+                        // 3. السماح بمسارات التصنيفات (Categories) - بالمسارين تحسباً للـ Context Path
+                        .requestMatchers("/api/v1/categories/**").permitAll()
+                        .requestMatchers("/api/v1/courses/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/roles").permitAll()
+                        // السماح لـ Swagger والأخطاء
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -57,12 +52,35 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/swagger-resources/**",
                                 "/webjars/**",
                                 "/error"
-                        ).permitAll())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().authenticated()
-                );
+                        ).permitAll()
+                        // السماح بقراءة الفيديوهات
+                        .requestMatchers("/uploads/**").permitAll()
+                        // السماح لأي طلب من نوع OPTIONS (مهم جداً لتجنب 403 من المتصفح)
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // أي طلب آخر مرفوض بدون تسجيل دخول
+                        .anyRequest().permitAll()
+                        );
 
         return http.build();
+    }
+
+    // 🌟 هذا هو المكان الصحيح لتعريف الـ CORS لكي يراه Spring Security
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        // يمكننا تركها true تحسباً لأي متطلبات مستقبلية
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

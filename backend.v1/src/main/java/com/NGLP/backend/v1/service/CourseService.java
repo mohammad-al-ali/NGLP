@@ -23,6 +23,10 @@ public class CourseService {
         return courseRepo.findByCategoryId(categoryId);
     }
 
+    public List<Course> findCoursesByTeacher(Long teacherId) {
+        return courseRepo.findByTeacherId(teacherId);
+    }
+
     public Course findById(Long id) {
         return courseRepo.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Course not found with this id"+ id));

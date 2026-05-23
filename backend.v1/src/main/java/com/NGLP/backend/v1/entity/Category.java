@@ -1,6 +1,7 @@
 package com.NGLP.backend.v1.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,10 +28,10 @@ public class Category {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Category parent;
-
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     @JsonIgnore
+    @Builder.Default
     private List<Category> subCategories = new ArrayList<>();
 }

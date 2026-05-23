@@ -8,4 +8,5 @@ import java.util.List;
 public interface CourseRepo extends JpaRepository<Course, Long> {
     // جلب كورسات قسم معين
     List<Course> findByCategoryId(Long categoryId);
+    List<Course> findByTeacherId(Long teacherId);
 }

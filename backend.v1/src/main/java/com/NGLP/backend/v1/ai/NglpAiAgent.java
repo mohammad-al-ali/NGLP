@@ -59,32 +59,19 @@ public class NglpAiAgent {
      */
     public String ask(Long userId, Long lessonId, Integer timestamp, String message) {
 
-        // 1. جلب أو إنشاء محادثة الطالب لهذا الدرس (الدالة الجديدة)
         Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
         String activeConversationId = String.valueOf(conversation.getId());
 
-        // 2. 🌟 حفظ سؤال الطالب في قاعدة البيانات مباشرة!
-        msgService.saveMessage(conversation, message, "USER", timestamp);
-
-        // 3. دمج سؤال الطالب مع بيانات النظام
         String enrichedPrompt = String.format(
                 "Student Question: %s\n[System Info: lessonId=%d, timestamp=%d]",
                 message, lessonId, timestamp
         );
 
-        // 4. إرسال الطلب للذكاء الاصطناعي
-        String aiResponse = this.chatClient.prompt()
+        return this.chatClient.prompt()
                 .user(enrichedPrompt)
                 .advisors(advisorSpec -> advisorSpec
                         .param(ChatMemory.CONVERSATION_ID, activeConversationId)
                 )
                 .call()
                 .content();
-
-        // 5. 🌟 حفظ إجابة الذكاء الاصطناعي في قاعدة البيانات!
-        msgService.saveMessage(conversation, aiResponse, "AI", timestamp);
-
-        // 6. إرجاع النص للواجهة الأمامية
-        return aiResponse;
-    }
-}
+    }}

@@ -23,16 +23,17 @@ public class LessonController {
     @GetMapping("/{id}")
     public Lesson getById(@PathVariable Long id) { return lessonService.findById(id); }
 
-    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{courseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createLessonWithVideo(
             // 🌟 عدنا للكود النظيف: نستلم كائن Lesson مباشرة
+            @PathVariable Long courseId,
             @RequestPart("lesson") Lesson lesson,
             @RequestPart("file") MultipartFile file) {
 
         log.info("📩 طلب إنشاء درس جديد مع الفيديو: {}", lesson.getTitle());
 
         try {
-            Lesson savedLesson = lessonService.create(lesson, file);
+            Lesson savedLesson = lessonService.create(courseId ,lesson, file);
             return ResponseEntity.ok(savedLesson);
         } catch (Exception e) {
             log.error("❌ حدث خطأ أثناء الرفع: ", e);

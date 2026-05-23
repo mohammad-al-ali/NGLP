@@ -5,7 +5,8 @@ import com.NGLP.backend.v1.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -14,8 +15,10 @@ public class UserController {
 
     private final UserService userService;
 
-    // ❌ تم حذف getAll() نهائياً لحماية بيانات الطلاب!
-    // ❌ تم حذف delete() لمنع مسح الحسابات وتدمير العلاقات في قاعدة البيانات.
+    @GetMapping
+    public ResponseEntity<List<User>> getAll() {
+        return ResponseEntity.ok(userService.findAll());
+    }
 
     /**
      * 1. جلب بيانات المستخدم (تُستخدم لعرض صفحة الملف الشخصي Profile)
@@ -26,19 +29,21 @@ public class UserController {
     }
 
     /**
-     * 2. إنشاء حساب جديد (Registration)
-     * غيرنا المسار إلى /register ليكون أكثر وضوحاً واحترافية
-     */
-    @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        return ResponseEntity.ok(userService.create(user));
-    }
-
-    /**
      * 3. تحديث الملف الشخصي (آمنة: تحدث الاسم والإيميل فقط)
      */
     @PutMapping("/{id}")
     public ResponseEntity<User> updateProfile(@PathVariable Long id, @RequestBody User user) {
         return ResponseEntity.ok(userService.updateProfile(id, user));
+    }
+
+    @PutMapping("/{id}/admin")
+    public ResponseEntity<User> updateAdminFields(@PathVariable Long id, @RequestBody User user) {
+        return ResponseEntity.ok(userService.updateAdminFields(id, user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
