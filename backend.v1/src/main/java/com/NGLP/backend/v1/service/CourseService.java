@@ -41,6 +41,7 @@ public class CourseService {
             existing.setTitle(course.getTitle());
             existing.setDescription(course.getDescription());
             existing.setCategory(course.getCategory());
+            existing.setTeacher(course.getTeacher());
             return courseRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("Course not found id"+ id));
     }
