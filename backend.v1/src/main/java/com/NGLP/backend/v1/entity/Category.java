@@ -30,7 +30,6 @@ public class Category {
     @JoinColumn(name = "parent_id")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Category parent;
-
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     @JsonIgnore
     @Builder.Default

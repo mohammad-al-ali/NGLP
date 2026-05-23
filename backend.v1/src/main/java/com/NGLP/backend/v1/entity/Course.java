@@ -15,11 +15,9 @@ public class Course {
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
-
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
-
     @ManyToOne
     @JoinColumn(name = "teacher_id")
     private User teacher;

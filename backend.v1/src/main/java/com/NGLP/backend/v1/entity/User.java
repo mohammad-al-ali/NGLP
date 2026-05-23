@@ -21,7 +21,7 @@ public class User {
     private String email;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password; //TODO ENCRYPTION
-    private boolean blocked;
+    private Boolean blocked;
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;

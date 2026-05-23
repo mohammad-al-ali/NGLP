@@ -517,6 +517,27 @@ textarea:focus {
   font-size: 0.84rem;
 }
 
+.form-message {
+  margin: 0;
+  font-size: 0.92rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid transparent;
+}
+
+.form-message.error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.form-message.success {
+  color: #065f46;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
 .form-note {
   margin: 0;
   font-size: 0.9rem;
@@ -1131,4 +1152,140 @@ th {
   .toggle-button {
     flex: 1;
   }
+  /* =========================================
+   تنسيقات الواجهة الرئيسية (Hero Section)
+   ========================================= */
+
+/* تمييز النص باللون الأزرق الجميل */
+.text-highlight {
+  color: #0078D4; /* نفس درجة اللون الأزرق المعتمدة في مشروعك */
+}
+
+/* تنسيق الرسمة التوضيحية (النافذة الوهمية) */
+.hero-illustration {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.mock-window {
+  width: 100%;
+  max-width: 500px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0,0,0,0.05);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  transform: translateY(0);
+  transition: transform 0.3s ease;
+}
+
+.mock-window:hover {
+  transform: translateY(-5px); /* تأثير حركة بسيط عند تمرير الماوس */
+}
+
+/* شريط النافذة العلوي (مثل متصفح أو نظام ماك) */
+.mock-header {
+  background: #f1f5f9;
+  padding: 12px 16px;
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+/* جسم النافذة (الفيديو على اليسار والشات على اليمين) */
+.mock-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  height: 250px;
+  background: #fafafa;
+}
+
+/* محاكي الفيديو */
+.mock-video {
+  background: #cbd5e1;
+  margin: 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mock-play-button {
+  width: 0; 
+  height: 0; 
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-left: 25px solid #ffffff; /* شكل مثلث للتشغيل */
+  opacity: 0.8;
+}
+
+/* محاكي الدردشة مع الذكاء الاصطناعي */
+.mock-chat {
+  border-left: 1px solid #e2e8f0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #ffffff;
+}
+
+.chat-line {
+  height: 8px;
+  border-radius: 4px;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.chat-line.ai {
+  background: #0078D4;
+  width: 80%;
+  opacity: 0.2;
+}
+
+.chat-line.user {
+  background: #94a3b8;
+  width: 60%;
+  align-self: flex-end;
+  opacity: 0.3;
+}
+
+.chat-line.short {
+  width: 40%;
+}
+
+/* أنيميشن بسيط يعطي انطباع أن المنصة حية وتتنفس */
+@keyframes pulse {
+  0% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.2; }
+}
+
+/* تعديلات لشاشات الجوال */
+@media (max-width: 768px) {
+  .hero-actions {
+    flex-direction: column !important;
+  }
+  .mock-body {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .mock-video {
+    height: 150px;
+  }
+  .mock-chat {
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+  }
+}
 }

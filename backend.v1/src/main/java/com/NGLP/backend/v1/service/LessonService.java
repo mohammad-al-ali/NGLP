@@ -1,19 +1,24 @@
 package com.NGLP.backend.v1.service;
 
+import com.NGLP.backend.v1.entity.Course;
 import com.NGLP.backend.v1.entity.Lesson;
+import com.NGLP.backend.v1.repo.CourseRepo;
 import com.NGLP.backend.v1.repo.LessonRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Paths;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class LessonService {
     private final LessonRepo lessonRepo;
-    private final LessonTranscriptionService transcriptionService;
+    private final CourseRepo courseRepo;
+    private final LessonTranscriptService transcriptionService;
     private final FileStorageService fileStorageService;
 
     // 1. تم استبدال findAll لنجلب الدروس بناءً على الكورس
@@ -27,18 +32,24 @@ public class LessonService {
     }
 
     @Transactional
-    public Lesson create(Lesson lesson, MultipartFile file) {
-        // 1. حفظ الفيديو محلياً والحصول على الرابط
+    public Lesson create(Long courseId , Lesson lesson, MultipartFile file) {
+        // 1. حفظ الفيديو محلياً والحصول على الرابط (مثلاً: /uploads/videos/abc.mp4)
         String videoUrl = fileStorageService.saveVideo(file);
-
         // 2. إسناد الرابط للدرس
         lesson.setVideoUrl(videoUrl);
-
+        Course course = courseRepo.findById(courseId)
+                .orElseThrow(()->new EntityNotFoundException("course not found with this Id :"+courseId));
         // 3. حفظ بيانات الدرس في قاعدة البيانات
+        lesson.setCourse(course);
         Lesson savedLesson = lessonRepo.save(lesson);
 
-        // 4. استدعاء خدمة استخراج النص للذكاء الاصطناعي
-        transcriptionService.extractAndSaveTranscript(savedLesson.getId(), file);
+        // 4. استخراج اسم الملف من الرابط، وبناء "المسار المطلق" (Absolute Path) على السيرفر
+        // لكي يستطيع سيرفر البايثون إيجاده وقراءته من الهارد ديسك مباشرة
+        String fileName = videoUrl.substring(videoUrl.lastIndexOf("/") + 1);
+        String absolutePath = Paths.get("uploads/videos/", fileName).toAbsolutePath().toString();
+
+        // 5. استدعاء خدمة استخراج النص مع تمرير (الدرس + المسار الفعلي)
+        transcriptionService.extractAndSaveTranscript(savedLesson, absolutePath);
 
         return savedLesson;
     }

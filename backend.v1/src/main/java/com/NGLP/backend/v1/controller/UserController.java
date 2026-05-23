@@ -29,15 +29,6 @@ public class UserController {
     }
 
     /**
-     * 2. إنشاء حساب جديد (Registration)
-     * غيرنا المسار إلى /register ليكون أكثر وضوحاً واحترافية
-     */
-    @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        return ResponseEntity.ok(userService.create(user));
-    }
-
-    /**
      * 3. تحديث الملف الشخصي (آمنة: تحدث الاسم والإيميل فقط)
      */
     @PutMapping("/{id}")

@@ -35,7 +35,7 @@ public class AiController {
 
     /**
      * نقطة الاتصال لإرسال سؤال إلى المعلم الذكي.
-     * المسار: POST /api/v1/ai/ask
+     * المسار: POST /api/v1/ai/messages
      *
      * @param request كائن يحتوي على بيانات السؤال والسياق (الدرس والوقت).
      * @return رد JSON يحتوي على إجابة الذكاء الاصطناعي.

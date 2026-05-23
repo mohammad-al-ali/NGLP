@@ -48,7 +48,7 @@ public class UserService {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
-        if (user.isBlocked()) {
+        if (user.getBlocked()) {
             throw new IllegalStateException("This account is blocked.");
         }
 
@@ -90,7 +90,7 @@ public class UserService {
                 existing.setRole(roleRepo.findById(updatedUser.getRole().getId())
                         .orElseThrow(() -> new EntityNotFoundException("Role not found with id " + updatedUser.getRole().getId())));
             }
-            existing.setBlocked(updatedUser.isBlocked());
+            existing.setBlocked(updatedUser.getBlocked());
             return userRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
     }
