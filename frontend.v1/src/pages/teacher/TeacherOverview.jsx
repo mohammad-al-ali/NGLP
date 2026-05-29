@@ -50,6 +50,7 @@ export default function TeacherOverview() {
   }
 
   const totalLessons = teacherCourses.reduce((total, c) => total + c.lessonsCount, 0);
+  const totalStudents = teacherCourses.reduce((total, c) => total + (c.students || 0), 0);
 
   return (
     <PageFrame 
@@ -95,7 +96,7 @@ export default function TeacherOverview() {
       >
         <StatCard label="الكورسات المنشأة" value={teacherCourses.length} />
         <StatCard label="الدروس المنشورة" value={totalLessons} />
-        <StatCard label="الطلاب النشطين" value="2,730" />
+        <StatCard label="الطلاب النشطين" value={`${totalStudents.toLocaleString()} طالب`} />
       </div>
 
       {/* Courses List Title */}

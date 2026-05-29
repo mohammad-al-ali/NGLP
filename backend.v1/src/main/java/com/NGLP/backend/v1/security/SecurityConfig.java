@@ -27,7 +27,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 // 1. تفعيل CORS من الـ Bean الموجود بالأسفل
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // 2. جعل النظام بدون جلسات (Stateless)
+                // 2. السماح بتحميل إطارات H2 Console (مهم جداً لعرض واجهة قاعدة البيانات)
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+                // 3. جعل النظام بدون جلسات (Stateless)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -44,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/courses/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/roles").permitAll()
+                        .requestMatchers("/h2-console", "/h2-console/**").permitAll()
                         // السماح لـ Swagger والأخطاء
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -62,6 +65,25 @@ public class SecurityConfig {
                         );
 
         return http.build();
+    }
+
+    @Bean
+    public org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers("/h2-console/**");
+    }
+
+    @Bean
+    public org.springframework.boot.web.servlet.ServletRegistrationBean<?> h2ConsoleServletRegistration() {
+        try {
+            Class<?> servletClass = Class.forName("org.h2.server.web.JakartaWebServlet");
+            jakarta.servlet.Servlet servlet = (jakarta.servlet.Servlet) servletClass.getDeclaredConstructor().newInstance();
+            org.springframework.boot.web.servlet.ServletRegistrationBean<?> registration =
+                    new org.springframework.boot.web.servlet.ServletRegistrationBean<>(servlet);
+            registration.addUrlMappings("/h2-console/*");
+            return registration;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to register H2 console servlet dynamically", e);
+        }
     }
 
     // 🌟 هذا هو المكان الصحيح لتعريف الـ CORS لكي يراه Spring Security

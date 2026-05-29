@@ -3,16 +3,17 @@ package com.NGLP.backend.v1.controller;
 import com.NGLP.backend.v1.ai.NglpAiAgent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+
 import java.util.Map;
+
 /**
  * المتحكم الخاص بعمليات الذكاء الاصطناعي (AI REST Controller).
- * يوفر نقاط اتصال (Endpoints) تتيح للواجهة الأمامية إرسال أسئلة الطلاب واستلام الردود.
+ * يوفر نقاط اتصال (Endpoints) تتيح للواجهة الأمامية إرسال أسئلة الطلاب واستلام الردود بشكل كامل أو كبث لحظي.
  */
-
-
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/ai")
@@ -23,31 +24,23 @@ public class AiController {
 
     /**
      * هيكل البيانات (Record) الخاص بطلب المحادثة.
-     * 1. تم إزالة conversationId لأن السيرفر الآن ذكي بما يكفي لجلبها أو إنشائها بنفسه.
-     * 2. تم تحويل timestamp إلى Integer (ثواني الفيديو) ليكون منطقياً أكثر.
      */
     public record AiRequest(
             Long userId,
             Long lessonId,
-            Integer timestamp,
+            String timestamp,
             String message
     ) {}
 
     /**
-     * نقطة الاتصال لإرسال سؤال إلى المعلم الذكي.
+     * نقطة الاتصال التقليدية لإرسال سؤال واسترجاع الإجابة الكاملة دفعة واحدة.
      * المسار: POST /api/v1/ai/messages
-     *
-     * @param request كائن يحتوي على بيانات السؤال والسياق (الدرس والوقت).
-     * @return رد JSON يحتوي على إجابة الذكاء الاصطناعي.
      */
     @PostMapping("/messages")
     public ResponseEntity<?> askTutor(@RequestBody AiRequest request) {
-
-        log.info("📩 استقبال سؤال جديد من المستخدم رقم: {} حول الدرس: {} في الثانية: {}",
-                request.userId(), request.lessonId(), request.timestamp());
+        log.info("📩 New AI question from User: {} for Lesson: {}", request.userId(), request.lessonId());
 
         try {
-            // استدعاء الوكيل الذكي للحصول على الإجابة (ترجع String الآن)
             String aiResponse = nglpAiAgent.ask(
                     request.userId(),
                     request.lessonId(),
@@ -55,15 +48,34 @@ public class AiController {
                     request.message()
             );
 
-            // نغلف الرد في Map ليتحول إلى JSON نظيف ومفهوم للـ Frontend
-            // النتيجة ستكون: { "response": "إجابة الذكاء الاصطناعي هنا" }
             return ResponseEntity.ok(Map.of("response", aiResponse));
 
         } catch (Exception e) {
-            log.error("❌ خطأ أثناء معالجة سؤال الطالب: ", e);
-            // إرجاع الخطأ أيضاً كـ JSON لكي يستطيع الـ Frontend التعامل معه بسهولة
+            log.error("❌ Error in AI Chat Engine: ", e);
             return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "عذراً، حدث خطأ أثناء محاولة الاتصال بالمعلم الذكي. يرجى المحاولة لاحقاً."));
+                    .body(Map.of("error", "عذراً، واجه المعلم الذكي مشكلة غير متوقعة. يرجى تكرار المحاولة لاحقاً."));
+        }
+    }
+
+    /**
+     * نقطة الاتصال للبث اللحظي للرد (Streaming Endpoint) بنظام Server-Sent Events (SSE).
+     * المسار: POST /api/v1/ai/messages/stream
+     * تتيح للطالب رؤية الكلمات وهي تتولد حرفاً بحرف لحظياً لزيادة التفاعلية.
+     */
+    @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> askTutorStream(@RequestBody AiRequest request) {
+        log.info("📩 New streaming AI question from User: {} for Lesson: {}", request.userId(), request.lessonId());
+
+        try {
+            return nglpAiAgent.askStream(
+                    request.userId(),
+                    request.lessonId(),
+                    request.timestamp(),
+                    request.message()
+            );
+        } catch (Exception e) {
+            log.error("❌ Error in AI Streaming Engine: ", e);
+            return Flux.just("عذراً، واجه المعلم الذكي مشكلة أثناء معالجة البث اللحظي.");
         }
     }
 }

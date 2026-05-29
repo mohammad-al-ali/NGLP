@@ -97,13 +97,13 @@ export default function CourseGrid({ coursesToShow = [] }) {
                 paddingTop: '14px'
               }}
             >
-              <span>{course.lessonsCount} lessons</span>
-              <span>{course.students?.toLocaleString() ?? 0} learners</span>
+              <span>{course.lessonsCount ?? course.lessons?.length ?? 0} دروس</span>
+              <span>{course.students?.toLocaleString() ?? 0} طالب مسجل</span>
             </div>
             
             <Link 
               className="secondary-button" 
-              to={`/course/${course.id}`}
+              to={`/catalog/${course.id}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -129,7 +129,7 @@ export default function CourseGrid({ coursesToShow = [] }) {
                 e.target.style.backgroundColor = 'var(--surface)';
               }}
             >
-              View Details
+              استكشاف الكورس
             </Link>
           </div>
         </article>
