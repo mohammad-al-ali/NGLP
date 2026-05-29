@@ -5,112 +5,129 @@ import com.NGLP.backend.v1.entity.Msg;
 import com.NGLP.backend.v1.repo.ConversationRepo;
 import com.NGLP.backend.v1.repo.MsgRepo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
-import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.transaction.annotation.Transactional;
+
 /**
- * مزود ذاكرة المحادثة המعتمد على قاعدة البيانات (Database-backed Chat Memory).
- * يقوم بتطبيق واجهة ChatMemory الخاصة بـ Spring AI ليقوم بحفظ واسترجاع الرسائل تلقائياً من MySQL.
+ * إدارة ذاكرة المحادثة للذكاء الاصطناعي وتخزينها في قاعدة البيانات.
+ * يقوم بحفظ الرسائل الحقيقية فقط بين الطالب والوكيل وتجنب تكرارها أو تلوثها برسائل الأدوات.
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DatabaseChatMemory implements ChatMemory {
 
     private final ConversationRepo conversationRepository;
     private final MsgRepo msgRepository;
 
-    /**
-     * حفظ قائمة من الرسائل الجديدة في قاعدة البيانات المرتبطة بمحادثة معينة.
-     *
-     * @param conversationId المعرّف النصي للمحادثة.
-     * @param aiMessages     قائمة الرسائل (الطالب أو الذكاء الاصطناعي) المراد حفظها.
-     */
     @Override
-    @Transactional // تضمن هذه الخاصية تراجع النظام عن الحفظ إذا حدث خطأ جزئي (Rollback)
+    @Transactional
     public void add(String conversationId, List<Message> aiMessages) {
         Long convId = parseConversationId(conversationId);
-        if (convId == null) return; // حماية النظام من الانهيار إذا كان المعرف غير صالح
+        if (convId == null || aiMessages == null || aiMessages.isEmpty()) return;
 
-        // جلب كائن المحادثة من قاعدة البيانات للربط (Foreign Key)
         Conversation conversation = conversationRepository.findById(convId)
                 .orElseThrow(() -> new RuntimeException("Conversation Not found: " + convId));
 
-        List<Msg> dbMessages = new ArrayList<>();
+        // 🌟 كشف الفرق الذكي (Smart Delta Detection): جلب آخر رسالة مخزنة في قاعدة البيانات للمطابقة
+        List<Msg> latest = msgRepository.findLastMessages(convId, PageRequest.of(0, 1));
+        Msg latestDbMsg = latest.isEmpty() ? null : latest.get(0);
 
-        // تحويل رسائل Spring AI إلى كيانات قاعدة البيانات (Entities) الخاصة بنا
-        for (Message aiMsg : aiMessages) {
-            Msg dbMsg = new Msg();
-            dbMsg.setConversation(conversation);
-            dbMsg.setContent(aiMsg.getText());
-            dbMsg.setSentAt(LocalDateTime.now());
-
-            // تصنيف نوع المرسل
-            if (aiMsg.getMessageType() == MessageType.USER) {
-                dbMsg.setSenderType("USER");
-            } else if (aiMsg.getMessageType() == MessageType.ASSISTANT) {
-                dbMsg.setSenderType("ASSISTANT");
-            } else {
-                dbMsg.setSenderType("SYSTEM");
+        int startIndex = 0;
+        if (latestDbMsg != null) {
+            // البحث التراجعي من نهاية القائمة لتحديد موقع آخر رسالة مخزنة
+            for (int i = aiMessages.size() - 1; i >= 0; i--) {
+                if (aiMessages.get(i).getText().equals(latestDbMsg.getContent()) 
+                    && aiMessages.get(i).getMessageType().name().equalsIgnoreCase(latestDbMsg.getSenderType())) {
+                    startIndex = i + 1;
+                    break;
+                }
             }
-
-            dbMessages.add(dbMsg);
         }
 
-        // حفظ جميع الرسائل دفعة واحدة لتحسين الأداء
-        msgRepository.saveAll(dbMessages);
+        List<Msg> dbMessages = new ArrayList<>();
+        for (int i = startIndex; i < aiMessages.size(); i++) {
+            Message aiMsg = aiMessages.get(i);
+            
+            // حفظ رسائل USER و ASSISTANT فقط لتجنب تلوث الذاكرة برسائل الأدوات (TOOL) المؤقتة
+            if (aiMsg.getMessageType() == MessageType.USER || aiMsg.getMessageType() == MessageType.ASSISTANT) {
+                Msg dbMsg = new Msg();
+                dbMsg.setConversation(conversation);
+                
+                String content = aiMsg.getText();
+                if (aiMsg.getMessageType() == MessageType.USER) {
+                    content = cleanUserMessage(content);
+                }
+                
+                dbMsg.setContent(content);
+                dbMsg.setSentAt(LocalDateTime.now());
+                dbMsg.setSenderType(aiMsg.getMessageType().name()); // USER أو ASSISTANT
+                dbMessages.add(dbMsg);
+            }
+        }
+
+        if (!dbMessages.isEmpty()) {
+            msgRepository.saveAll(dbMessages);
+            log.info("Saved {} new messages to DB for Conversation ID: {}", dbMessages.size(), convId);
+        }
     }
 
     /**
-     * استرجاع جميع الرسائل الخاصة بمحادثة معينة (يتم توجيهها للدالة المحددة بالعدد).
+     * تنظيف رسائل الطالب من السياق المحقون تلقائياً (RAG Context) لحفظ السؤال الصافي فقط في قاعدة البيانات.
      */
+    private String cleanUserMessage(String content) {
+        if (content == null) return "";
+        if (content.startsWith("Student Question: ")) {
+            content = content.substring("Student Question: ".length());
+        }
+        int index = content.indexOf("\n[Video Transcript Context");
+        if (index != -1) {
+            content = content.substring(0, index);
+        }
+        int systemIndex = content.indexOf("\n[System Info:");
+        if (systemIndex != -1) {
+            content = content.substring(0, systemIndex);
+        }
+        return content.trim();
+    }
+
     @Override
     public List<Message> get(String conversationId) {
-        return get(conversationId, 100); // الجلب الافتراضي لآخر 100 رسالة
+        return get(conversationId, 8); // جلب آخر 8 رسائل فقط (4 حوارات متبادلة) لتوفير الـ Tokens وتجنب حدود TPM لـ Groq
     }
 
-    /**
-     * استرجاع آخر N رسالة لمحادثة معينة وتمريرها للذكاء الاصطناعي ليفهم السياق.
-     *
-     * @param conversationId المعرّف النصي للمحادثة.
-     * @param lastN          عدد الرسائل المراد استرجاعها.
-     * @return قائمة بكائنات Message المفهومة لـ Spring AI.
-     */
     public List<Message> get(String conversationId, int lastN) {
         Long convId = parseConversationId(conversationId);
-        if (convId == null) return List.of(); // إرجاع قائمة فارغة بأمان
+        if (convId == null) return List.of();
 
-        // جلب الرسائل من قاعدة البيانات باستخدام Pagination
         List<Msg> dbMessages = msgRepository.findLastMessages(convId, PageRequest.of(0, lastN));
 
-        // عكس الترتيب الزمني ليقرأها الذكاء الاصطناعي بشكل منطقي (من الأقدم للأحدث)
+        // عكس ترتيب الرسائل لتكون مرتبة زمنياً من الأقدم للأحدث قبل إرسالها للـ LLM
         Collections.reverse(dbMessages);
 
-        // تحويل كيانات قاعدة البيانات (Entities) إلى كائنات Spring AI Messages
-        return dbMessages.stream().map(dbMsg -> {
-            if ("USER".equalsIgnoreCase(dbMsg.getSenderType())) {
-                return new UserMessage(dbMsg.getContent());
-            } else if ("ASSISTANT".equalsIgnoreCase(dbMsg.getSenderType())) {
-                return new AssistantMessage(dbMsg.getContent());
-            } else {
-                return new SystemMessage(dbMsg.getContent());
-            }
-        }).collect(Collectors.toList());
+        return dbMessages.stream()
+                .filter(dbMsg -> "USER".equalsIgnoreCase(dbMsg.getSenderType()) || "ASSISTANT".equalsIgnoreCase(dbMsg.getSenderType()))
+                .map(dbMsg -> {
+                    if ("USER".equalsIgnoreCase(dbMsg.getSenderType())) {
+                        return new UserMessage(dbMsg.getContent());
+                    } else {
+                        return new AssistantMessage(dbMsg.getContent());
+                    }
+                }).collect(Collectors.toList());
     }
 
-    /**
-     * مسح جميع الرسائل المرتبطة بمحادثة معينة.
-     */
     @Override
     @Transactional
     public void clear(String conversationId) {
@@ -120,15 +137,11 @@ public class DatabaseChatMemory implements ChatMemory {
         }
     }
 
-    /**
-     * دالة مساعدة (Helper Method) لتحويل الـ ID النصي القادم من Spring AI إلى Long رقمي.
-     * تحمي النظام من الانهيار إذا أرسل النظام قيمة مثل "default".
-     */
     private Long parseConversationId(String conversationId) {
         try {
             return Long.parseLong(conversationId);
         } catch (NumberFormatException e) {
-            return null; // إرجاع null بأمان بدلاً من رمي Exception
+            return null;
         }
     }
 }

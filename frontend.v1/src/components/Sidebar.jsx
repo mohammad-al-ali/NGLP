@@ -6,6 +6,7 @@ export default function Sidebar() {
   const roleStr = String(user?.role?.name || user?.role || '').toUpperCase();
   const isTeacher = roleStr.includes('TEACHER');
   const isStudent = roleStr.includes('STUDENT');
+  const isAdmin = roleStr.includes('ADMIN');
 
   function handleLogout() {
     localStorage.clear();
@@ -171,6 +172,23 @@ export default function Sidebar() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 18V5.625c0-.621.504-1.125 1.125-1.125Z" />
                   </svg>
                   <span>إدارة الدروس</span>
+                </NavLink>
+              </>
+            )}
+            {/* Admin Only: لوحة التحكم الشاملة وإدارة التصنيفات */}
+            {isAdmin && (
+              <>
+                <NavLink to="/admin/users" style={navLinkStyle}>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                  </svg>
+                  <span>لوحة تحكم المشرف</span>
+                </NavLink>
+                <NavLink to="/admin/categories" style={navLinkStyle}>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" />
+                  </svg>
+                  <span>إدارة التصنيفات</span>
                 </NavLink>
               </>
             )}

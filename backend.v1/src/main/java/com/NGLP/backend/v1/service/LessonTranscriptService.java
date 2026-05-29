@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
@@ -105,29 +106,50 @@ public class LessonTranscriptService {
         return transcriptRepo.findByLessonIdOrderByStartSecondAsc(lessonId);
     }
 
-    public String findContextByTime(Long lessonId, String timestampStr) {
+    public String findContextByTime(Long lessonId, Object timestampObj) {
         try {
-            Integer timestampSeconds = parseTimestampToSeconds(timestampStr);
+            // تحويل آمن للوقت إلى ثوانٍ
+            Integer timestampSeconds = parseTimestampToSeconds(timestampObj);
+
+            if (timestampSeconds == null || timestampSeconds < 0) {
+                log.warn("⚠️ تم إلغاء البحث لأن الوقت غير صالح: {}", timestampObj);
+                return null;
+            }
+
+            log.info("🔍 جاري جلب النص للدرس {} عند الثانية: {}", lessonId, timestampSeconds);
+
             return transcriptRepo.findTranscriptAtTimestamp(lessonId, timestampSeconds)
                     .map(LessonTranscript::getTranscriptContent)
-                    .orElse(null);
+                    .orElseGet(() -> {
+                        log.warn("❌ لم يتم العثور على أي نص في قاعدة البيانات لهذه الثانية.");
+                        return null;
+                    });
+
         } catch (Exception e) {
-            log.error("خطأ أثناء البحث عن النص للوقت: {}", timestampStr);
+            log.error("❌ خطأ غير متوقع أثناء البحث عن النص للوقت: {}", timestampObj, e);
             return null;
         }
     }
+    /**
+     * دالة مساعدة ذكية لتحويل المدخلات (سواء كانت أرقاماً أو نصوصاً مثل "01:30") إلى ثوانٍ.
+     */
+    private Integer parseTimestampToSeconds(Object timestampObj) {
+        if (timestampObj == null) return null;
 
-    // الدالة المساعدة
-    private Integer parseTimestampToSeconds(String timestampStr) {
-        if (timestampStr == null || timestampStr.isBlank()) return 0;
-        if (timestampStr.contains(":")) {
-            String[] parts = timestampStr.split(":");
-            return (Integer.parseInt(parts[0].trim()) * 60) + Integer.parseInt(parts[1].trim());
+        String timeStr = String.valueOf(timestampObj).trim();
+        if (!StringUtils.hasText(timeStr)) return null;
+
+        // إذا كان النص يحتوي على ":" مثل "01:30"
+        if (timeStr.contains(":")) {
+            String[] parts = timeStr.split(":");
+            if (parts.length == 2) {
+                return (Integer.parseInt(parts[0].trim()) * 60) + Integer.parseInt(parts[1].trim());
+            }
         }
-        return Integer.parseInt(timestampStr.trim());
-    }
 
-    // ميثودز CRUD أساسية (اختيارية حسب حاجتك)
+        // إذا كان رقم صريح كـ نص "100" أو Integer
+        return Integer.parseInt(timeStr);
+    }
     public void deleteByLesson(Long lessonId) {
         List<LessonTranscript> transcripts = transcriptRepo.findByLessonIdOrderByStartSecondAsc(lessonId);
         transcriptRepo.deleteAll(transcripts);

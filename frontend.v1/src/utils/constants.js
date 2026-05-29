@@ -195,32 +195,28 @@ export function normalizeCategory(category, parentId = null) {
 }
 
 export function normalizeCourse(course) {
-  const fallback = courses.find((item) => item.id === course.id);
   return {
     id: course.id,
-    title: course.title || fallback?.title || 'Untitled course',
-    categoryId: course.category?.id || fallback?.categoryId || null,
-    category: course.category?.name || fallback?.category || 'Uncategorized',
-    level: fallback?.level || 'All levels',
-    progress: fallback?.progress || 0,
-    students: fallback?.students || 0,
-    lessonsCount: fallback?.lessonsCount || 0,
-    description: course.description || fallback?.description || 'No description has been added yet.',
+    title: course.title || 'كورس غير معنون',
+    categoryId: course.category?.id || null,
+    category: course.category?.name || 'تصنيف عام',
+    level: course.level || 'جميع المستويات',
+    progress: course.progressPercentage || course.progress || 0,
+    students: course.studentsCount || (course.students ? (typeof course.students === 'number' ? course.students : course.students.length) : 0),
+    lessonsCount: course.lessonsCount || course.lessons?.length || 0,
+    description: course.description || 'لا يوجد وصف تفصيلي متوفر حالياً لهذا الكورس.',
   };
 }
 
 export function normalizeLesson(lesson) {
-  const fallback = Object.values(lessonsByCourse)
-    .flat()
-    .find((item) => item.id === lesson.id);
   return {
     id: lesson.id,
-    title: lesson.title || fallback?.title || 'Untitled lesson',
-    duration: lesson.durationSeconds ? formatDuration(lesson.durationSeconds) : fallback?.duration || '00:00',
+    title: lesson.title || 'درس غير معنون',
+    duration: lesson.durationSeconds ? formatDuration(lesson.durationSeconds) : '00:00',
     durationSeconds: lesson.durationSeconds || 0,
-    description: fallback?.description || 'Lesson details will appear here when the backend provides lesson descriptions.',
-    transcript: lesson.transcript || fallback?.transcript || 'Transcript will appear here after processing finishes.',
-    videoUrl: lesson.videoUrl || fallback?.videoUrl || '',
+    description: lesson.description || 'تفاصيل الدرس التعليمي ستظهر هنا قريباً.',
+    transcript: lesson.transcript || 'التفريغ النصي للفيديو سيظهر هنا بعد انتهاء عملية المعالجة.',
+    videoUrl: lesson.videoUrl || '',
   };
 }
 
@@ -229,7 +225,7 @@ export function normalizeEnrollment(enrollment) {
   return {
     id: enrollment.id,
     course,
-    progress: enrollment.progressPercentage || 0,
+    progress: enrollment.progressPercentage || enrollment.progress || 0,
     lastWatchedLesson: enrollment.lastWatchedLesson ? normalizeLesson(enrollment.lastWatchedLesson) : null,
   };
 }
@@ -243,7 +239,11 @@ export function formatDuration(totalSeconds) {
 export function resolveMediaUrl(url) {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
-  // Ensure the media URL matches the backend baseUrl
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
-  return `${apiBaseUrl.replace('/api/v1', '')}${url}`;
+  
+  // Use either specified URL or standard base prefix
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  const cleanBase = envUrl.replace('/api/v1', '');
+  const relativePath = url.startsWith('/') ? url : `/${url}`;
+  
+  return `${cleanBase}${relativePath}`;
 }

@@ -43,7 +43,7 @@ function App() {
             }
           />
           <Route path="/catalog" element={<CourseCatalog />} />
-          <Route path="/course/:id" element={<CourseDetails />} />
+          <Route path="/catalog/:courseId" element={<CourseDetails />} />
           <Route
             path="/profile"
             element={
@@ -111,6 +111,14 @@ function App() {
         </Route>
         <Route
           path="/study/:courseId/lesson/:lessonId"
+          element={
+            <RoleRoute allowedRoles={[ROLE_STUDENT]}>
+              <StudyRoom />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/study-room/:courseId/lesson/:lessonId"
           element={
             <RoleRoute allowedRoles={[ROLE_STUDENT]}>
               <StudyRoom />

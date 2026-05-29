@@ -1,6 +1,7 @@
 package com.NGLP.backend.v1.repo;
 
 import com.NGLP.backend.v1.entity.Msg;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -20,4 +21,6 @@ public interface MsgRepo extends JpaRepository<Msg, Long> {
 
     // جلب رسائل محادثة معينة مرتبة من الأقدم للأحدث
     List<Msg> findByConversationIdOrderBySentAtAsc(Long conversationId);
+
+    boolean existsByConversationIdAndContent(Long convId, @Nullable String text);
 }
